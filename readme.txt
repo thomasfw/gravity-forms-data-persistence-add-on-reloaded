@@ -3,7 +3,7 @@ Contributors: unclhos
 Tags: gravity, form, data, field, persistence, add-on, addon, plugin, plug-in, extension
 Requires at least: 2.9.2
 Tested up to: 4.2.2
-Stable tag: 3.3.3
+Stable tag: 3.3.4
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=W9FEL3T4BHTPU&lc=US&no_note=0&cn=Add%20special%20instructions%20to%20the%20seller%3a&no_shipping=1&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted
@@ -57,6 +57,12 @@ If there is a specific feature you would like to sponsor, you can email me direc
 2. This is a screenshot from the *FORM FIELD ADVANCE* settings *tab*. This will allow you to disable persistence on a per field bases.
 
 == Changelog ==
+
+= 3.3.4 =
+1. Fixed a bug where updated field values reverted back to the persistent data if page validation failed
+2. Removed the 'Multiple Entries' option
+3. Removed the 'Clear Persistence' option (will now always clear persistent data on form submission)
+
 
 = 3.3.3 =
 1. Fixed a big where ajax auto-save was still firing even though manual save option was chosen

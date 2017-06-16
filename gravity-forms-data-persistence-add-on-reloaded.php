@@ -4,12 +4,12 @@
   Plugin URI: http://asthait.com
   Description: This is a <a href="http://www.gravityforms.com/" target="_blank">Gravity Form</a> plugin. A big limitation with Gravity Form is, in case of big multipage forms, if you close or refresh the page during somewhere midle of some step. all the steps data will loose. this plugin solves that problem. This is an updated version of asthait's plugin.
   Author: Robert Iseley
-  Version: 3.3.3
+  Version: 3.3.4
   Author URI: http://www.robertiseley.com
   Orginal Plugin by: asthait
  */
 
-define( 'GFDPVERSION', '3.3.3' );
+define( 'GFDPVERSION', '3.3.4' );
 
 register_activation_hook( __FILE__, 'ri_gfdp_install' );
 function ri_gfdp_install() {
@@ -194,9 +194,10 @@ function ri_gfdp_sanitize_data( $data, $form ) {
 	return $data;
 }
 
-// Updating persistence data on page change
-add_action( "gform_post_paging", "ri_page_changed", 10, 3 );
-function ri_page_changed( $form, $coming_from_page, $current_page ) {
+// Updating persistence data on page change and pre-validation
+add_action( "gform_post_paging", "ri_save_form_persistence_data", 10, 3 );
+add_filter( "gform_pre_validation", "ri_save_form_persistence_data", 10 );
+function ri_save_form_persistence_data( $form ) {
 
 	if ( gfdp_is_persistent( $form ) ) {
 
@@ -204,39 +205,19 @@ function ri_page_changed( $form, $coming_from_page, $current_page ) {
 		$data       = ri_gfdp_sanitize_data( $_POST, $form );
 		set_transient( $transient_key, json_encode( $data ), ri_gfdp_getFormTransientExpiration($form) );
 	}
+
+	return $form;
 }
 
-// Updating or clearning persistence data on form submission
+
+// Always clear persistent data on form submission
 add_action( "gform_after_submission", "ri_set_post_content", 10, 2 );
-function ri_set_post_content( $entry, $form ) {
-	if ( gfdp_is_persistent( $form ) ) {
-		//Update form data in wp_options table
+function ri_set_post_content( $entry, $form ) 
+{
+	if ( gfdp_is_persistent( $form ) ) 
+	{
 		$transient_key = ri_gfdp_getFormTransientKeyForGF( $form );
-
-		if ( $form['isEnablePersistentClear'] || $form['ri_gfdp_persist_clear'] ) {
-			delete_transient( $transient_key );
-		} else {
-			$data = ri_gfdp_sanitize_data( $_POST, $form );
-			set_transient( $transient_key, json_encode( $data ), ri_gfdp_getFormTransientExpiration($form) );
-		}
-
-		$entry_option_key = ri_getEntryOptionKeyForGF( $form );
-		if ( get_option( $entry_option_key ) ) {
-			//Delete old entry from GF tables
-			if ( isset( $form['ri_gfdp_persist'] ) ) {
-
-				if ( ! $form['ri_gfdp_multiple_entries'] ) {
-					RGFormsModel::delete_lead( get_option( $entry_option_key ) );
-				}
-			} else {
-				if ( ! $form['isEnableMulipleEntry'] ) {
-					RGFormsModel::delete_lead( get_option( $entry_option_key ) );
-				}
-			}
-		}
-
-		//Update entry in wp_options table
-		update_option( $entry_option_key, $entry['id'] );
+		delete_transient( $transient_key );
 	}
 }
 
@@ -363,25 +344,6 @@ function ri_persistency_settings( $form_settings, $form ) {
 
 	$tr_persistent .= '
         <tr>
-        	<th>Multiple Entries ' . gform_tooltip( "ri_gfdp_multiple_entries", '', true ) . ' </th>
-        	<td>
-            <input type="checkbox" name="ri_gfdp_multiple_entries" id="ri_gfdp_multiple_entries" ' . checked( rgar( $form, "ri_gfdp_multiple_entries" ), '1', false ) . '" value="1" />
-            <label for="ri_gfdp_multiple_entries">Allow multiple entries</label>
-			</td>
-        </tr>';
-
-	$tr_persistent .= '
-        <tr>
-        	<th>Clear Persistence ' . gform_tooltip( "ri_gfdp_clear_persist", '', true ) . ' </th>
-        	
-			<td>
-            <input type="checkbox" name="ri_gfdp_persist_clear" id="ri_gfdp_persist_clear" ' . checked( rgar( $form, "ri_gfdp_persist_clear" ), '1', false ) . '" value="1" />
-            <label for="ri_gfdp_persist_clear"> Clear persistence on submit</label>
-			</td>
-        </tr>';
-
-	$tr_persistent .= '
-        <tr>
         	<th>Purge Persistence Data ' . gform_tooltip( "ri_gfdp_purge_data", '', true ) . ' </th>
 
 			<td>
@@ -427,8 +389,6 @@ function ri_gfdp_save_form_settings( $form ) {
 	$form['ri_gfdp_persist']                = rgpost( 'ri_gfdp_persist' );
 	$form['ri_gfdp_persist_duration_int']   = rgpost( 'ri_gfdp_persist_duration_int' );
 	$form['ri_gfdp_persist_duration']       = rgpost( 'ri_gfdp_persist_duration' );
-	$form['ri_gfdp_multiple_entries']       = rgpost( 'ri_gfdp_multiple_entries' );
-	$form['ri_gfdp_persist_clear']          = rgpost( 'ri_gfdp_persist_clear' );
 	$form['ri_gfdp_persist_guest']          = rgpost( 'ri_gfdp_persist_guest' );
 
 	return $form;
@@ -446,12 +406,6 @@ function ri_editor_script_persistency() {
 		if (typeof form != 'undefined') {
 			if (typeof form.isPersistent != 'undefined') {
 				jQuery("#ri_gfdp_persist").val('submit_only'); 
-			}
-			if (typeof form.isEnableMulipleEntry != 'undefined') {
-				jQuery("#ri_gfdp_multiple_entries").attr("checked", form.isEnableMulipleEntry);
-			}
-			if (typeof form.isEnablePersistentClear != 'undefined') {
-				jQuery("#ri_gfdp_persist_clear").attr("checked", form.isEnablePersistentClear);
 			}
 		}
 	</script>
@@ -495,7 +449,6 @@ add_filter( 'gform_tooltips', 'ri_add_persistency_tooltips' );
 function ri_add_persistency_tooltips( $tooltips ) {
 	$tooltips["ri_gfdp_persist"]                = "<h6>Persistency</h6>Select to save users progress with form so they may continue at another time.";
 	$tooltips["ri_gfdp_persist_guest"] = "<h6>Guest Persitency</h6>Persist Data for users not logged into WordPress. This is done by an identifiier cookie.";
-	$tooltips["ri_gfdp_multiple_entries"]       = "<h6>Multiple Entries Allowed</h6>This will allow multiple entry from same user. User can not edit their last and the previous entry not removed from the entry list";
 	$tooltips['ri_gfdp_no_persist']             = '<h6>No Persist</h6>Checking this will removed this field(s) from the persistence data. User will have to re-enter information upon returning to the form. This does not affect the submission of an entry. Useful for sensitive information.';
 	$tooltips['ri_gfdp_clear_persist']          = '<h6>Clear Persist</h6>This option will delete the persistence data when a form is submitted. Allow the user to return to a fresh blank form.';
 	$tooltips['ri_gfdp_persist_duration']          = '<h6>Persistence Duration</h6>The duration you want the data to be available to the user. Leave blank for no limit.';
