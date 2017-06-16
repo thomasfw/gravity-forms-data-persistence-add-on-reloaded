@@ -1,0 +1,9 @@
+{
+  "name": "thomasfw/gravity-forms-data-persistence-add-on-reloaded",
+  "description": "This is a Gravity Forms plugin. A big limitation with Gravity Form is, in case of big multipage forms, if you close or refresh the page during somewhere midle of some step. all the steps data will loose. this plugin solves that problem.",
+  "keywords": ["wordpress", "plugin", "gravityforms"],
+  "type": "wordpress-plugin",
+  "require": {
+    "composer/installers": "v1.0.6"
+  }
+}
