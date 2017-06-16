@@ -4,12 +4,12 @@
   Plugin URI: http://asthait.com
   Description: This is a <a href="http://www.gravityforms.com/" target="_blank">Gravity Form</a> plugin. A big limitation with Gravity Form is, in case of big multipage forms, if you close or refresh the page during somewhere midle of some step. all the steps data will loose. this plugin solves that problem. This is an updated version of asthait's plugin.
   Author: Robert Iseley
-  Version: 3.3.2
+  Version: 3.3.3
   Author URI: http://www.robertiseley.com
   Orginal Plugin by: asthait
  */
 
-define( 'GFDPVERSION', '3.3.2' );
+define( 'GFDPVERSION', '3.3.3' );
 
 register_activation_hook( __FILE__, 'ri_gfdp_install' );
 function ri_gfdp_install() {
@@ -108,16 +108,33 @@ function ri_gfdp_ajax() {
 
 //The js for ajax call
 add_action( 'gform_enqueue_scripts', 'ri_gfdp_js_enqueue', 90, 2 );
-function ri_gfdp_js_enqueue( $form, $is_ajax ) {
+function ri_gfdp_js_enqueue( $form, $is_ajax ) 
+{
 	if ( gfdp_is_persistent( $form ) ) {
 		add_action( 'wp_print_footer_scripts', 'ri_gfdp_js', 1000 );
 	}
+
+	// Only set the autosave interval if we've specified ajax as the save method
+	if ( $form['ri_gfdp_persist'] == 'ajax' )
+	{
+		add_action( 'wp_print_footer_scripts', 'ri_gfdp_js_autosave', 1010 );
+	}
 }
 
-function ri_gfdp_js() {
+function ri_gfdp_js_autosave()
+{
 	$ajax_interval = apply_filters('gfdp_ajax_interval', 10000);
 	?>
 	<script type="text/javascript">
+		jQuery(document).ready(setInterval(gfdp_ajax, <?php echo $ajax_interval; ?>));
+	</script>
+	<?php 
+}
+
+function ri_gfdp_js() {
+	?>
+	<script type="text/javascript">
+
 		var changed = false;
 
 		function gfdp_events() {
@@ -147,8 +164,6 @@ function ri_gfdp_js() {
 				})
 			}
         };
-
-		jQuery(document).ready(setInterval(gfdp_ajax, <?php echo $ajax_interval; ?>));
 	</script> <?php
 }
 
@@ -542,7 +557,7 @@ function ri_gfdp_manual_save_button_ajax( $form, $is_ajax ) {
 
 	if( $form['ri_gfdp_persist'] == 'manual_save' && is_user_logged_in() ) 
 	{
-		add_action('wp_footer', 'ri_gfdp_manual_save_ajax');
+		add_action('wp_footer', 'ri_gfdp_manual_save_ajax', 10020 );
 		add_filter( 'gform_next_button', 'ri_gfdp_manual_save_next_button_markup', 10, 2 );
 		add_filter( 'gform_submit_button', 'ri_gfdp_manual_save_submit_button_markup', 10, 2 );
 	}
