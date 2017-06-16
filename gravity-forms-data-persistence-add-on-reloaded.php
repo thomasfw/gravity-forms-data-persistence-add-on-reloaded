@@ -43,10 +43,6 @@ function ri_gfdp_cookie() {
 	}
 }
 
-add_action( 'wp_head', 'ri_gfdp_version_head' );
-function ri_gfdp_version_head() {
-	echo '<!-- Gravity Forms Data Persistence Add-On Reloaded Version ' . GFDPVERSION . ' -->';
-}
 
 // Register garlic script for local persistence
 add_action( 'wp_enqueue_scripts', 'ri_gfdp_script_register' );
@@ -158,7 +154,7 @@ function ri_gfdp_js() {
 
 // Saving data from ajax call
 function ri_gfdp_ajax_save( $form, $coming_from_page = '', $current_page = '' ) {
-	if ( $form['ri_gfdp_persist'] == 'ajax' ) {
+	if ( $form['ri_gfdp_persist'] == 'ajax' || $form['ri_gfdp_persist'] == 'manual_save' ) {
 		$transient_key = ri_gfdp_getFormTransientKeyForGF( $form );
 		parse_str( $_POST['form'], $data );
 		$data = ri_gfdp_sanitize_data( $data, $form );
@@ -317,8 +313,9 @@ function ri_persistency_settings( $form_settings, $form ) {
 			<td>
 				<select name="ri_gfdp_persist" id="ri_gfdp_persist">
 					<option value="off" ' . selected( rgar( $form, "ri_gfdp_persist" ), 'off', false ) . '>Off</option>
-					<option value="submit_only" ' . selected( rgar( $form, "ri_gfdp_persist" ), 'submit_only', false ) . '>Save data on page change/submit only</option>
-					<option value="ajax" ' . selected( rgar( $form, "ri_gfdp_persist" ), 'ajax', false ) . '>Save data with ajax</option>
+					<option value="manual_save" ' . selected( rgar( $form, "ri_gfdp_persist" ), 'manual_save', false ) . '>Save on page change or submission, or manually with \'Save Changes\'</option>
+					<option value="submit_only" ' . selected( rgar( $form, "ri_gfdp_persist" ), 'submit_only', false ) . '>Save on page change or submission</option>
+					<option value="ajax" ' . selected( rgar( $form, "ri_gfdp_persist" ), 'ajax', false ) . '>Auto save data with ajax</option>
 				</select>
 			</td>
         </tr>';
@@ -426,13 +423,14 @@ function ri_gfdp_save_form_settings( $form ) {
 ;
 
 // Action to inject supporting script to the form editor page
+// We should replace deprecated function with 'gform_form_settings' - https://www.gravityhelp.com/documentation/article/gform_form_settings/
 add_action( "gform_advanced_settings", "ri_editor_script_persistency" );
 function ri_editor_script_persistency() {
 	?>
 	<script type='text/javascript'>
 		if (typeof form != 'undefined') {
 			if (typeof form.isPersistent != 'undefined') {
-				jQuery("#ri_gfdp_persist").val('submit_only');
+				jQuery("#ri_gfdp_persist").val('submit_only'); 
 			}
 			if (typeof form.isEnableMulipleEntry != 'undefined') {
 				jQuery("#ri_gfdp_multiple_entries").attr("checked", form.isEnableMulipleEntry);
@@ -525,3 +523,93 @@ function ri_gfdp_purge_data() {
 	echo "purged";
 	die();
 }
+
+
+
+
+
+/**
+ * Integrated Manual Save
+ * Extracted from gravity-forms-data-persistence-add-on-reloaded-save-button
+ */
+
+/**
+ * If Ajax data persistence is enabled, user is logged in and current form is not a user registration form - enqueue javascript and buttons
+ */
+add_action('gform_enqueue_scripts', 'ri_gfdp_manual_save_button_ajax', 90, 3);
+
+function ri_gfdp_manual_save_button_ajax( $form, $is_ajax ) {
+
+	if( $form['ri_gfdp_persist'] == 'manual_save' && is_user_logged_in() ) 
+	{
+		add_action('wp_footer', 'ri_gfdp_manual_save_ajax');
+		add_filter( 'gform_next_button', 'ri_gfdp_manual_save_next_button_markup', 10, 2 );
+		add_filter( 'gform_submit_button', 'ri_gfdp_manual_save_submit_button_markup', 10, 2 );
+	}
+} // END ri_gfdp_manual_save_button_ajax
+
+
+/**
+ * The save button template
+ */
+function ri_gfdp_manual_save_save_button()
+{
+	$before = apply_filters( 'ri_gfdp_manual_save_button_before', '' );
+	$after = apply_filters( 'ri_gfdp_manual_save_button_after', '' );
+	return $before . "<input type='button' value='Save Changes' class='button ri_gfdp_manual_save_save_button' onclick='ri_gfdp_manual_save_ajax_function();'>" . $after; 
+} 
+
+/**
+ * Place the save button before the 'Next' button
+ */
+function ri_gfdp_manual_save_next_button_markup( $next_button, $form ) {
+	$save_button = ri_gfdp_manual_save_save_button();
+	return $next_button . $save_button;
+} // END my_next_button_markup
+
+/**
+ * Place the save button before the 'Submit' button
+ */
+function ri_gfdp_manual_save_submit_button_markup( $submit_button, $form ) {
+	$save_button = ri_gfdp_manual_save_save_button();
+	return $save_button . $submit_button;
+} // END my_submit_button_markup
+
+
+/**
+ * Ajax to handle button press - 
+ *     activates the 'save' command, 
+ *     sets the button value to 'Saving ...' whilst being saved, 
+ *     sets the button value to 'Saved' for three seconds to confirm to the user that the save completed,
+ *     sets the button value back to 'Save'
+ */
+function ri_gfdp_manual_save_ajax() {
+?>
+	<script type="text/javascript" >
+
+		function ri_gfdp_manual_save_ajax_function() 
+		{
+			var $saveBtn = jQuery('.gform_body').find('.ri_gfdp_manual_save_save_button')
+			if ( $saveBtn.hasClass('is-saving') ) return;
+
+			$saveBtn.addClass('is-saving').prop('value', 'Saving ...');
+		
+			changed = true; 
+			gfdp_ajax();
+			jQuery(document).ajaxComplete(function(event, request, settings ) 
+			{
+				if ( settings.url === '<?php echo admin_url('admin-ajax.php'); ?>' && request.responseText === 'Saved' ) {
+					ri_gfdp_manual_save_ajax_reset_button_function();
+				}
+			});
+		}
+						
+		function ri_gfdp_manual_save_ajax_reset_button_function() {
+			jQuery('.gform_body').find('.ri_gfdp_manual_save_save_button').prop('value', 'Saved');
+			setTimeout(function(){
+				jQuery('.gform_body').find('.ri_gfdp_manual_save_save_button').removeClass('is-saving').prop('value', 'Save Changes');
+			}, 3000);
+		}
+	
+	</script> <?php
+} // END ri_gfdp_manual_save_ajax
