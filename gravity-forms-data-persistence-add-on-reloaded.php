@@ -4,12 +4,12 @@
   Plugin URI: http://asthait.com
   Description: This is a <a href="http://www.gravityforms.com/" target="_blank">Gravity Form</a> plugin. A big limitation with Gravity Form is, in case of big multipage forms, if you close or refresh the page during somewhere midle of some step. all the steps data will loose. this plugin solves that problem. This is an updated version of asthait's plugin.
   Author: Robert Iseley
-  Version: 3.3.1
+  Version: 3.3.2
   Author URI: http://www.robertiseley.com
   Orginal Plugin by: asthait
  */
 
-define( 'GFDPVERSION', '3.3.1' );
+define( 'GFDPVERSION', '3.3.2' );
 
 register_activation_hook( __FILE__, 'ri_gfdp_install' );
 function ri_gfdp_install() {
