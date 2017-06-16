@@ -231,8 +231,7 @@ function ri_set_post_content( $entry, $form ) {
 
 // Create and return option table key for a form and user
 function ri_gfdp_getFormTransientKeyForGF( $form, $user = '' ) {
-	global $current_user;
-	get_currentuserinfo();
+	$current_user = wp_get_current_user();
 
 	if(!$user) {
 		$user = $current_user;
@@ -264,8 +263,7 @@ function ri_gfdp_getFormTransientExpiration($form) {
 
 // Create and return option table key for a form and user
 function ri_getFormOptionKeyForGF( $form, $user = '' ) {
-	global $current_user;
-	get_currentuserinfo();
+	$current_user = wp_get_current_user();
 
 	if(!$user) {
 		$user = $current_user;
@@ -286,8 +284,7 @@ function ri_getFormOptionKeyForGF( $form, $user = '' ) {
 
 // Create and return option table key for user form entry
 function ri_getEntryOptionKeyForGF( $form, $user = '' ) {
-	global $current_user;
-	get_currentuserinfo();
+	$current_user = wp_get_current_user();
 
 	if(!$user) {
 		$user = $current_user;
