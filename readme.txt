@@ -58,6 +58,9 @@ If there is a specific feature you would like to sponsor, you can email me direc
 
 == Changelog ==
 
+= 3.3.5 =
+1. Fixed undefined variable notices 
+
 = 3.3.4 =
 1. Fixed a bug where updated field values reverted back to the persistent data if page validation failed
 2. Removed the 'Multiple Entries' option
